@@ -49,10 +49,25 @@ object List { // `List` companion object. Contains functions for creating and wo
   def product2(ns: List[Double]) =
     foldRight(ns, 1.0)(_ * _) // `_ * _` is more concise notation for `(x,y) => x * y`; see sidebar
 
+  /**
+    * Exercise 3.2
+    * Implement the function `tail` for removing the first element of a `List`. Note that the
+    * function takes constant time.
+    */
+  def tail[A](l: List[A]): List[A] = l match {
+    case Nil        => throw new UnsupportedOperationException("tail of empty list")
+    case Cons(_, t) => t
+  }
 
-  def tail[A](l: List[A]): List[A] = ???
-
-  def setHead[A](l: List[A], h: A): List[A] = ???
+  /**
+    * Exercise 3.3
+    * Using the same idea, implement the function `setHead` for replacing the first element
+    * of a `List` with a different value.
+    */
+  def setHead[A](l: List[A], h: A): List[A] = l match {
+    case Nil        => throw new UnsupportedOperationException("setHead on empty list")
+    case Cons(_, t) => Cons(h, t)
+  }
 
   def drop[A](l: List[A], n: Int): List[A] = ???
 
