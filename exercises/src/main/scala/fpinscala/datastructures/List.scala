@@ -1,5 +1,7 @@
 package fpinscala.datastructures
 
+import java.lang.reflect.Constructor
+
 sealed trait List[+A] // `List` data type, parameterized on a type, `A`
 case object Nil extends List[Nothing] // A `List` data constructor representing the empty list
 /* Another data constructor, representing nonempty lists. Note that `tail` is another `List[A]`,
@@ -69,11 +71,54 @@ object List { // `List` companion object. Contains functions for creating and wo
     case Cons(_, t) => Cons(h, t)
   }
 
-  def drop[A](l: List[A], n: Int): List[A] = ???
+  /**
+    * Exercise 3.4
+    * Generalize `tail` to the fuction `drop`, which removes the first `n` elements from a list.
+    * Note that this function takes time proportional only to the number of elements being
+    * dropped - we don't need to make a copy of the entire `List`.
+    */
+  def drop[A](l: List[A], n: Int): List[A] =
+    if (n <= 0) l
+    else l match {
+      case Nil => Nil
+      case Cons(_, t) => drop(t, n - 1)
+    }
 
-  def dropWhile[A](l: List[A], f: A => Boolean): List[A] = ???
+  /**
+    * Exercise 3.5
+    * Implement `dropWhile`, which removes elements from the `List` prefix as long as they
+    * match a predicate.
+    */
+  def dropWhile[A](l: List[A], f: A => Boolean): List[A] = l match {
+    case Cons(h, t) if f(h) => dropWhile(t, f)
+    case _ => l
+  }
 
-  def init[A](l: List[A]): List[A] = ???
+  def reverse[A](l: List[A]): List[A] = {
+    @annotation.tailrec
+    def go(l: List[A], m: List[A] = Nil): List[A] = l match {
+      case Nil => m
+      case Cons(h, t) => go(t, Cons(h, m))
+    }
+
+    go(l)
+  }
+
+  /**
+    * Exercise 3.6
+    * Implement a function `init` that returns a `List` consisting of all but the last element
+    * of a `List`.
+    */
+  def init[A](l: List[A]): List[A] = {
+    @annotation.tailrec
+    def go(l: List[A], m: List[A] = Nil): List[A] = l match {
+      case Nil          => throw new UnsupportedOperationException("init of empty list")
+      case Cons(_, Nil) => m
+      case Cons(h, t)   => go(t, Cons(h, m))
+    }
+
+    reverse(go(l))
+  }
 
   def length[A](l: List[A]): Int = ???
 
