@@ -120,9 +120,46 @@ object List { // `List` companion object. Contains functions for creating and wo
     reverse(go(l))
   }
 
-  def length[A](l: List[A]): Int = ???
+  /**
+    * Exercise 3.9
+    * Compute the length of a list using `foldRight`.
+    */
+  def length[A](l: List[A]): Int =
+    foldRight(l, 0)((_, acc) => acc + 1)
 
-  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B = ???
+  /**
+    * Exercise 3.10
+    * Our implementation of `foldRight` is not tail-recursive and will result in a `StackOver-
+    * flowError` for large lists (we say it's not `stack-safe`). Convince yourself that this is the
+    * case, and then write another general list-recursion function, `foldLeft`, that is
+    * tail-recursive, using the techniques we discussed in the previous chapter.
+    */
+  @annotation.tailrec
+  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B = l match {
+    case Nil => z
+    case Cons(h, t) => foldLeft(t, f(z, h))(f)
+  }
+
+  /**
+    * Exercise 3.11
+    * Write `sum`, `product`, and a function to compute the length of a list using `foldLeft`.
+    */
+  def sum3(l: List[Int]): Int =
+    foldLeft(l, 0)(_ + _)
+
+  def product3(l: List[Double]): Double =
+    foldLeft(l, 1.0)(_ * _)
+
+  def length2[A](l: List[A]): Int =
+    foldLeft(l, 0)((acc, _) => acc + 1)
+
+  /**
+    * Exercise 3.12
+    * Write a function that returns the reverse of a list (given `List(1, 2, 3)`) it returns
+    * `List(3, 2, 1)`). See if you can write it using a fold.
+    */
+  def reverse2[A](l: List[A]): List[A] =
+    foldLeft(l, Nil: List[A])((t, h) => Cons(h, t))
 
   def map[A,B](l: List[A])(f: A => B): List[B] = ???
 }
