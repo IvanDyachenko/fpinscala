@@ -1,7 +1,5 @@
 package fpinscala.datastructures
 
-import java.lang.reflect.Constructor
-
 sealed trait List[+A] // `List` data type, parameterized on a type, `A`
 case object Nil extends List[Nothing] // A `List` data constructor representing the empty list
 /* Another data constructor, representing nonempty lists. Note that `tail` is another `List[A]`,
@@ -161,5 +159,102 @@ object List { // `List` companion object. Contains functions for creating and wo
   def reverse2[A](l: List[A]): List[A] =
     foldLeft(l, Nil: List[A])((t, h) => Cons(h, t))
 
-  def map[A,B](l: List[A])(f: A => B): List[B] = ???
+  /**
+    * Exercise 3.13
+    * Can you write `foldLeft` in terms of `foldRight`? How about the other way around?
+    * Implementing `foldRight` via `foldLeft` is useful because it lets us implement
+    * `foldRight` tail-recursively, which means it works even for large lists without
+    * overflowing the stack.
+    */
+  def foldLeftViaFoldRight[A, B](l: List[A], z: B)(f: (B, A) => B): B =
+    foldRight[A, B => B](l, b => b)((a, g) => b => g(f(b, a)))(z)
+
+  def foldRightViaFoldLeft[A, B](l: List[A], z: B)(f: (A, B) => B): B =
+    foldLeft[A, B => B](l, b => b)((g, a) => b => g(f(a, b)))(z)
+
+  /**
+    * Exercise 3.14
+    * Implement `append` in terms of either `foldLeft` or `foldRight`.
+    */
+  def appendViaFoldLeft[A](l: List[A], r: List[A]): List[A] =
+    foldLeft[A, List[A] => List[A]](l, xs => xs)((g, x) => xs => g(Cons(x, xs)))(r)
+
+  def appendViaFoldRight[A](l: List[A], r: List[A]): List[A] =
+    foldRight(l, r)(Cons(_, _))
+
+  /**
+    * Exercise 3.15
+    * Write a function that concatenates a list of lists into a single list. Its runtime
+    * should be linear in the total lenght of all lists. Try to use functions we have already
+    * defined.
+    */
+  def concat[A](l: List[List[A]]): List[A] =
+    foldRight(l, Nil: List[A])(appendViaFoldRight)
+
+  /**
+    * Exercise 3.16
+    * Write a function that transforms a list of integers by adding 1 to each element.
+    */
+  def increase(l: List[Int], by: Int): List[Int] =
+    foldRight(l, Nil: List[Int])((x, xs) => Cons(x + by, xs))
+
+  /**
+    * Exercise 3.17
+    * Write a function that turns each value in a `List[Double]` into a `String`. You can use
+    * the expression `d.toString` to convert some `d: Double` to a `String`.
+    */
+  def doubleToString(l: List[Double]): List[String] =
+    foldRight(l, Nil: List[String])((x, xs) => Cons(x.toString, xs))
+
+  /**
+    * Exercise 3.18
+    * Write a function `map` that generalizes modifying each element in a list while maintain-
+    * ing the structure of the list.
+    */
+  def map[A,B](l: List[A])(f: A => B): List[B] =
+    foldRightViaFoldLeft(l, Nil: List[B])((x, xs) => Cons(f(x), xs))
+
+  /**
+    * Exercise 3.19
+    * Write a function `filter` that removes elements from a list unless they satisfy a given
+    * predicate. Use it to remove all odd numbers from a `List[Int]`.
+    */
+  def filter[A](as: List[A])(f: A => Boolean): List[A] =
+    foldRightViaFoldLeft(as, Nil: List[A])((x, xs) => if (f(x)) Cons(x, xs) else xs)
+
+  /**
+    * Exercise 3.20
+    * Write a function `flatMap` that works like `map` except that the function given will return
+    * a list instead of a single result, and that list should be inserted into the final resulting
+    * list.
+    */
+  def flatMap[A, B](as: List[A])(f: A => List[B]): List[B] =
+    concat(map(as)(f))
+
+  /**
+    * Exercise 3.21
+    * Use `flatMap` to implement `filter`.
+    */
+  def filterViaFlatMap[A](l: List[A])(f: A => Boolean): List[A] =
+    flatMap(l)(a => if (f(a)) List(a) else Nil)
+
+  /**
+    * Exercise 3.22
+    * Write a function that accepts two lists and constructs a new list by adding correspond-
+    * ing elements.
+    */
+  def addPairwise(as: List[Int], bs: List[Int]): List[Int] = (as, bs) match {
+    case (Nil, _) | (_, Nil)        => Nil
+    case (Cons(a, ak), Cons(b, bk)) => Cons(a + b, addPairwise(ak, bk))
+  }
+
+  /**
+    * Exercise 3.23
+    * Generalize the function you just wrote so that it's not specific to integers or addition.
+    */
+  def zipWith[A, B, C](as: List[A], bs: List[B])(f: (A, B) => C): List[C] = (as, bs) match {
+    case (Nil, _) | (_, Nil) => Nil
+    case (Cons(a, ak), Cons(b, bk)) => Cons(f(a, b), zipWith(ak, bk)(f))
+  }
+
 }
