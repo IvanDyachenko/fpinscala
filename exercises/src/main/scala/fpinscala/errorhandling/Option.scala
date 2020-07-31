@@ -79,5 +79,15 @@ object Option {
       xsOpt.flatMap(xs => xOpt.map(x => x :: xs))
     }.map(_.reverse)
 
-  def traverse[A, B](a: List[A])(f: A => Option[B]): Option[List[B]] = ???
+  /**
+    * Exercise 4.5
+    * Implement this function. It's straightforward to do using `map` and `sequence`, but try
+    * for a more efficient implementation that only looks at the list once. In fact, implement
+    * `sequence` in terms of `traverse`.
+    */
+  def traverse[A, B](a: List[A])(f: A => Option[B]): Option[List[B]] =
+    a.foldLeft[Option[List[B]]](Some(Nil))((xs, x) => map2(f(x), xs)(_ :: _)).map(_.reverse)
+
+  def sequenceViaTraverse[A](a: List[Option[A]]): Option[List[A]] =
+    traverse(a)(identity)
 }
