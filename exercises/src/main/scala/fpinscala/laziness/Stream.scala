@@ -17,18 +17,100 @@ trait Stream[+A] {
     case Empty => None
     case Cons(h, t) => if (f(h())) Some(h()) else t().find(f)
   }
-  def take(n: Int): Stream[A] = ???
 
-  def drop(n: Int): Stream[A] = ???
+  /**
+    * Exercise 5.1
+    * Write a function to convert a `Stream` to a `List`, which will force its evaluation and let
+    * you look at it in the REPL. You can convert to the regular `List` type in the standard
+    * library. You can place this and other functions that operate on a `Stream` inside the
+    * `Stream` trait.
+    */
+  def toList: List[A] = {
+    @annotation.tailrec
+    def go(s: Stream[A], l: List[A]): List[A] =
+      s match {
+	case Empty => Nil
+        case Cons(h, t) => go(t(), h() :: l)
+      }
 
-  def takeWhile(p: A => Boolean): Stream[A] = ???
+    go(this, List.empty[A]).reverse
+  }
 
-  def forAll(p: A => Boolean): Boolean = ???
+  /**
+    * Exercise 5.2
+    * Write the function `take(n)` for returning the first `n` elements of a `Stream`.
+    */
+  def take(n: Int): Stream[A] = this match {
+    case Cons(h, _) if n == 1 => cons(h(), empty)
+    case Cons(h, t) if n > 1  => cons(h(), t().take(n - 1))
+    case _                    => empty
+  }
 
-  def headOption: Option[A] = ???
+  /**
+    * Exercise 5.2
+    * Write the function `drop` fo skipping the first `n` elements of a `Stream`.
+    */
+  @annotation.tailrec
+  final def drop(n: Int): Stream[A] = this match {
+    case Cons(_, t) if n > 0 => t().drop(n - 1)
+    case _                   => this
+  }
 
-  // 5.7 map, filter, append, flatmap using foldRight. Part of the exercise is
-  // writing your own function signatures.
+  /**
+    * Exercise 5.3
+    * Write the function `takeWhile` for returning all starting elements of a `Stream` that
+    * match the given predicate.
+    */
+  def takeWhile(p: A => Boolean): Stream[A] = this match {
+    case Cons(h, t) if p(h()) => cons(h(), t() takeWhile p)
+    case _                    => empty
+  }
+
+  /**
+    * Exercise 5.4
+    * Implement `forAll`, which checks that all elements in the `Stream` match a given predi-
+    * cate. Your implementations should terminate the traversal as soon as it encounters a
+    * nonmatching value.
+    */
+  def forAll(p: A => Boolean): Boolean =
+    foldRight(true)((a, b) => p(a) && b)
+
+  /**
+    * Exercise 5.5
+    * Use `foldRight` to implement `takeWhile`.
+    */
+  def takeWhileViaFoldRight(p: A => Boolean): Stream[A] =
+    foldRight(empty[A]) {
+      case (a, s) if p(a) => cons(a, s)
+      case (_, s)         => s
+    }
+
+  /**
+    * Exercise 5.6
+    * Implement `headOption` using `foldRight`.
+    */
+  def headOption: Option[A] =
+    foldRight[Option[A]](None)((a, _) => Some(a))
+
+  /**
+    * Exercise 5.7
+    * Implement `map`, `filter`, `append`, and `flatMap` using `foldRight`. The `append` method
+    * should be non-strict in its argument.
+    */
+  def map[B](f: A => B): Stream[B] =
+    foldRight(empty[B])((a, s) => cons(f(a), s))
+
+  def filter(p: A => Boolean): Stream[A] =
+    foldRight(empty[A]) {
+      case (a, s) if p(a) => cons(a, s)
+      case (_, s)         => s
+    }
+
+  def append[B >: A](b: => Stream[B]): Stream[B] =
+    foldRight(b)(cons(_, _))
+
+  def flatMap[B](f: A => Stream[B]): Stream[B] =
+    foldRight(empty[B])((a, b) => f(a) append b)
 
   def startsWith[B](s: Stream[B]): Boolean = ???
 }
