@@ -30,17 +30,70 @@ object RNG {
       (f(a), rng2)
     }
 
-  def nonNegativeInt(rng: RNG): (Int, RNG) = ???
+  /**
+    * Exercise 6.1
+    *
+    * Write a function that uses `RNG.nextInt` to generate a random
+    * integer between 0 and `Int.MaxValue` (inclusive).
+    *
+    * Make sure to handle the corner case when `nextInt` returns
+    * `Int.MinValue`, which doesn't have a non-negative counterpart.
+    */
+  def nonNegativeInt(rng: RNG): (Int, RNG) = {
+    val (i, r) = rng.nextInt
+    (if (i < 0) -(i + 1) else i, r)
+  }
 
-  def double(rng: RNG): (Double, RNG) = ???
+  /**
+    * Exercise 6.2
+    *
+    * Write a function to generate a `Double` between 0 and 1, not
+    * including 1.
+    *
+    * Note: You can use `Int.MaxValue` to obtain the maximum positive
+    * integer value, and you can use `x.toDouble` to convert an `x:
+    * Int` to a `Double`.
+    */
+  def double(rng: RNG): (Double, RNG) = {
+    val (i, r) = nonNegativeInt(rng)
+    (i / (Int.MaxValue.toDouble + 1), r)
+  }
 
-  def intDouble(rng: RNG): ((Int,Double), RNG) = ???
+  /**
+    * Exercise 6.3
+    *
+    * Write functions to generate an `(Int, Double)` pair, a `(Double,
+    * Int)` pair, and a `(Double, Double, Double)` 3-tuple. You should
+    * be able to reuse the functions you've already written.
+    */
+  def intDouble(rng: RNG): ((Int,Double), RNG) = {
+    val (i, r1) = rng.nextInt
+    val (d, r2) = double(r1)
+    (i, d) -> r2
+  }
 
-  def doubleInt(rng: RNG): ((Double,Int), RNG) = ???
+  def doubleInt(rng: RNG): ((Double,Int), RNG) = {
+    val ((i, d), r) = intDouble(rng)
+    (d, i) -> r
+  }
 
-  def double3(rng: RNG): ((Double,Double,Double), RNG) = ???
+  def double3(rng: RNG): ((Double,Double,Double), RNG) = {
+    val (d1, r1) = double(rng)
+    val (d2, r2) = double(r1)
+    val (d3, r3) = double(r2)
+    (d1, d2, d3) -> r3
+  }
 
-  def ints(count: Int)(rng: RNG): (List[Int], RNG) = ???
+  /**
+    * Exercise 6.4
+    *
+    * Write a function to generate a list of random integers.
+    */
+  def ints(count: Int)(rng: RNG): (List[Int], RNG) =
+    (0 until count).foldLeft(List.empty[Int] -> rng) { case ((is, rng), _) =>
+      val (i, r) = rng.nextInt
+      (i :: is) -> r
+    }
 
   def map2[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = ???
 
