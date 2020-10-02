@@ -95,11 +95,57 @@ object RNG {
       (i :: is) -> r
     }
 
-  def map2[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = ???
+  /**
+    * Exercise 6.5
+    *
+    * Use `map` to reimplement `double` in a more elegant way.
+    */
+  def doubleViaMap(rng: RNG): Rand[Double] =
+    map(nonNegativeInt)(_ / (Int.MaxValue.toDouble + 1))
 
-  def sequence[A](fs: List[Rand[A]]): Rand[List[A]] = ???
+  /**
+    * Exercise 6.6
+    *
+    * Write the implementation of `map2` based on the following
+    * signature.
+    *
+    * This function takes two actions, `ra` and `rb`, and a function
+    * `f` for combining their results, and returns a new action that
+    * combines them.
+    */
+  def map2[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] =
+    rng => {
+      val (a, rng1) = ra(rng)
+      val (b, rng2) = rb(rng1)
+      (f(a, b), rng2)
+    }
 
-  def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] = ???
+  /**
+    * Exercise 6.7
+    *
+    * Implement `sequence` for combining a `List` of transitions into
+    * a single transition.
+    */
+  def sequence[A](fs: List[Rand[A]]): Rand[List[A]] =
+    fs.foldRight(unit(List.empty[A]))((f, acc) => map2(f, acc)(_ :: _))
+
+  /**
+    * Exercise 6.8
+    *
+    * Implement `flatMap`, and then use it to implement `nonNegativeLessThan`.
+    */
+  def flatMap[A, B](f: Rand[A])(g: A => Rand[B]): Rand[B] =
+    rng => {
+      val (a, rng1) = f(rng)
+      g(a)(rng1)
+    }
+
+  def nonNegativeLessThan(n: Int): Rand[Int] =
+    flatMap(nonNegativeInt) { i =>
+      val mod = i % n
+      if (i + (n - 1) - mod >= 0) unit(mod)
+      else nonNegativeLessThan(n)
+    }
 }
 
 case class State[S,+A](run: S => (A, S)) {
