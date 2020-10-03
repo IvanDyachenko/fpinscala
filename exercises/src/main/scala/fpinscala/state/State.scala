@@ -146,15 +146,51 @@ object RNG {
       if (i + (n - 1) - mod >= 0) unit(mod)
       else nonNegativeLessThan(n)
     }
+
+  /**
+    * Exercise 6.9
+    *
+    * Reimplement `map` and `map2` in terms of `flatMap`.
+    *
+    * The fact that this is possible is what we are referring to when
+    * we say that `flatMap` is more powerful than `map` and `map2`.
+    */
+  def mapViaFlatMap[A, B](ra: Rand[A])(f: A => B): Rand[B] =
+    flatMap(ra)(a => unit(f(a)))
+
+  def map2ViaFlatMap[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] =
+    flatMap(ra)(a => map(rb)(b => f(a, b)))
 }
 
+/**
+  * Exercise 6.10
+  *
+  * Generalize the functions `unit`, `map`, `map2`, `flatMap`, and
+  * `sequence`.
+  *
+  * Add them as methods on the `State` case class where
+  * possible. Otherwise you should put them in a `State` companion
+  * object.
+  */
 case class State[S,+A](run: S => (A, S)) {
+  def flatMap[B](f: A => State[S, B]): State[S, B] = State { s1 =>
+    val (a, s2) = run(s1)
+    f(a).run(s2)
+  }
+
   def map[B](f: A => B): State[S, B] =
-    ???
-  def map2[B,C](sb: State[S, B])(f: (A, B) => C): State[S, C] =
-    ???
-  def flatMap[B](f: A => State[S, B]): State[S, B] =
-    ???
+    flatMap(a => State.unit(f(a)))
+
+  def map2[B, C](sb: State[S, B])(f: (A, B) => C): State[S, C] =
+    flatMap(a => sb.map(b => f(a, b)))
+}
+
+object State {
+  type Rand[A] = State[RNG, A]
+
+  def unit[S, A](a: A): State[S, A] = State(s => (a, s))
+
+  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = ???
 }
 
 sealed trait Input
@@ -162,8 +198,3 @@ case object Coin extends Input
 case object Turn extends Input
 
 case class Machine(locked: Boolean, candies: Int, coins: Int)
-
-object State {
-  type Rand[A] = State[RNG, A]
-  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = ???
-}
