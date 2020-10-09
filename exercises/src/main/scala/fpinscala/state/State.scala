@@ -30,6 +30,8 @@ object RNG {
       (f(a), rng2)
     }
 
+  def boolean: Rand[Boolean] = map(int)(_ % 2 == 0)
+
   /**
     * Exercise 6.1
     *
@@ -160,6 +162,12 @@ object RNG {
 
   def map2ViaFlatMap[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] =
     flatMap(ra)(a => map(rb)(b => f(a, b)))
+
+  def lessThan(n: Int): Rand[Int] =
+    flatMap(int) { i =>
+      val mod = i % n
+      if (i - mod + (n - 1) < 0) lessThan(n) else unit(mod)
+    }
 }
 
 /**
@@ -189,6 +197,9 @@ object State {
   type Rand[A] = State[RNG, A]
 
   def unit[S, A](a: A): State[S, A] = State(s => (a, s))
+
+  def sequence[S, A](ls: List[State[S, A]]): State[S, List[A]] =
+    ls.reverse.foldLeft(unit[S, List[A]](Nil))((as, a) => a.map2(as)(_ :: _))
 
   def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = ???
 }
