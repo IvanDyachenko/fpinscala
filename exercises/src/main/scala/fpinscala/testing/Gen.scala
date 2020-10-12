@@ -15,11 +15,75 @@ import Prop._
  * modify while working through the chapter.
  */
 
-trait Prop {
+case class Prop(run: (TestCases, RNG) => Result) {
+  /**
+    * Exercise 8.9
+    *
+    * Now that we have a representation of `Prop`, implement `&&` and
+    * `||` for composing `Prop` values. Notice that in the case of
+    * failure we don't know which property was responsible, the left
+    * or the right. Can you devise a way of handling this, perhaps by
+    * allowing `Prop` values to be assigned a tag or label which gets
+    * displayed in the event of a failure?
+    */
+  def &&(that: Prop): Prop = Prop { (n, rng) =>
+    run(n, rng) match {
+      case Passed => that.run(n, rng)
+      case failed => failed
+    }
+  }
+
+  def ||(that: Prop): Prop = Prop { (n, rng) =>
+    run(n, rng) match {
+      case Falsified(failure, successes) => that.tag(failure).run(n, rng)
+      case passed                        => passed
+    }
+  }
+
+  private def tag(msg: String) = Prop { (n, rng) =>
+    run(n, rng) match {
+      case Falsified(failure, successes) => Falsified(s"$msg\n$failure", successes)
+      case passed                        => passed
+    }
+  }
 }
 
 object Prop {
-  def forAll[A](gen: Gen[A])(f: A => Boolean): Prop = ???
+  type TestCases = Int
+  type FailedCase = String
+  type SuccessCount = Int
+
+  sealed trait Result {
+    def isFalsified: Boolean
+  }
+
+  case object Passed extends Result {
+    def isFalsified: Boolean = false
+  }
+
+  case class Falsified(failure: FailedCase, successes: SuccessCount) extends Result {
+    def isFalsified: Boolean = true
+  }
+
+  def forAll[A](gen: Gen[A])(f: A => Boolean): Prop = Prop { (n, rng) =>
+    randomStream(gen)(rng).zipWith(Stream.from(0)) { (a, i) =>
+      try {
+        if (f(a)) Passed else Falsified(a.toString, i)
+      } catch { case e: Exception => Falsified(buildMsg(a, e), i)}
+    }.take(n).find(_.isFalsified).getOrElse(Passed)
+  }
+
+  /**
+    * Generates an infinite stream of `A` values be repeatedly
+    * sampling a generator.
+    */
+  private def randomStream[A](g: Gen[A])(rng: RNG): Stream[A] =
+    Stream.unfold(rng)(rng => Some(g.sample.run(rng)))
+
+  private def buildMsg[A](s: A, e: Exception): String =
+    s"test case: $s\n" +
+    s"generated an exception: ${e.getMessage}\n" +
+    s"stack trace:\n ${e.getStackTrace.mkString("\n")}"
 }
 
 case class Gen[+A](sample: State[RNG, A]) {
