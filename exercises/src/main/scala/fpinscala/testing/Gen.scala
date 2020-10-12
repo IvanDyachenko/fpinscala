@@ -90,6 +90,14 @@ case class Gen[+A](sample: State[RNG, A]) {
   def map[A,B](f: A => B): Gen[B] = ???
 
   /**
+    * Exercise 8.10
+    *
+    * Implement helper functions for converting `Gen` to `SGen`. You
+    * can add this as a method on `Gen`.
+    */
+  def unsized: SGen[A] = SGen(_ => this)
+
+  /**
     * Exercise 8.6
     *
     * Implement `flatMap`, and then use it to implement this more
@@ -120,6 +128,16 @@ object Gen {
 
   def listOfN[A](n: Int, g: Gen[A]): Gen[List[A]] =
     Gen(State.sequence(List.fill(n)(g.sample)))
+
+  /**
+    * Exercise 8.12
+    *
+    * Implement a `listOf` combinator that doesn't acceprt an explicit
+    * size. It should return an `SGen` insted of a `Gen`. The
+    * implementation should generate lists of the requested size.
+    */
+  def listOf[A](g: Gen[A]): SGen[List[A]] =
+    SGen(n => listOfN(n, g))
 
   /**
     * Exercise 8.4
@@ -159,7 +177,19 @@ object Gen {
   }
 }
 
-trait SGen[+A] {
+case class SGen[+A](forSize: Int => Gen[A]) {
 
+  /**
+    * Exercize 8.11
+    *
+    * Not surprisingly, `SGen` at a minimum supports many of the same
+    * operations as `Gen`, and the implementations are rather
+    * mechanical. Define some convenience functions on `SGen` that
+    * simply delegate to the corresponding functions on `Gen`.
+    */
+  def map[A,B](f: A => B): SGen[B] = SGen(forSize(_).map(f))
+
+  def flatMap[B](f: A => SGen[B]): SGen[B] = SGen { size =>
+    forSize(size).flatMap(f(_).forSize(size))
+  }
 }
-
