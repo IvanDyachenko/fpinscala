@@ -15,7 +15,7 @@ import Prop._
  * modify while working through the chapter.
  */
 
-case class Prop(run: (TestCases, RNG) => Result) {
+case class Prop(run: (MaxSize, TestCases, RNG) => Result) {
   /**
     * Exercise 8.9
     *
@@ -26,22 +26,22 @@ case class Prop(run: (TestCases, RNG) => Result) {
     * allowing `Prop` values to be assigned a tag or label which gets
     * displayed in the event of a failure?
     */
-  def &&(that: Prop): Prop = Prop { (n, rng) =>
-    run(n, rng) match {
-      case Passed => that.run(n, rng)
+  def &&(that: Prop): Prop = Prop { (maxSize, testCases, rng) =>
+    run(maxSize, testCases, rng) match {
+      case Passed => that.run(maxSize, testCases, rng)
       case failed => failed
     }
   }
 
-  def ||(that: Prop): Prop = Prop { (n, rng) =>
-    run(n, rng) match {
-      case Falsified(failure, successes) => that.tag(failure).run(n, rng)
+  def ||(that: Prop): Prop = Prop { (maxSize, testCases, rng) =>
+    run(maxSize, testCases, rng) match {
+      case Falsified(failure, successes) => that.tag(failure).run(maxSize, testCases, rng)
       case passed                        => passed
     }
   }
 
-  private def tag(msg: String) = Prop { (n, rng) =>
-    run(n, rng) match {
+  private def tag(msg: String) = Prop { (maxSize, testCases, rng) =>
+    run(maxSize, testCases, rng) match {
       case Falsified(failure, successes) => Falsified(s"$msg\n$failure", successes)
       case passed                        => passed
     }
@@ -49,6 +49,7 @@ case class Prop(run: (TestCases, RNG) => Result) {
 }
 
 object Prop {
+  type MaxSize = Int
   type TestCases = Int
   type FailedCase = String
   type SuccessCount = Int
@@ -65,13 +66,26 @@ object Prop {
     def isFalsified: Boolean = true
   }
 
-  def forAll[A](gen: Gen[A])(f: A => Boolean): Prop = Prop { (n, rng) =>
+  def forAll[A](gen: Gen[A])(f: A => Boolean): Prop = Prop { (_, testCases, rng) =>
     randomStream(gen)(rng).zipWith(Stream.from(0)) { (a, i) =>
       try {
         if (f(a)) Passed else Falsified(a.toString, i)
       } catch { case e: Exception => Falsified(buildMsg(a, e), i)}
-    }.take(n).find(_.isFalsified).getOrElse(Passed)
+    }.take(testCases).find(_.isFalsified).getOrElse(Passed)
   }
+
+  private def forAll[A](forSize: Int => Gen[A])(f: A => Boolean): Prop = Prop { (maxSize, testCases, rng) =>
+    val testCasesPerSize = (testCases + maxSize - 1) / maxSize
+    val props = Stream.from(0).take((maxSize min testCases) + 1) // Make one property per size, but no more than testCases properties
+      .map(size => forAll(forSize(size))(f))
+      .map(prop => Prop { (maxSize, _, rng) => prop.run(maxSize, testCasesPerSize, rng) })
+      .toList
+    val prop = props.reduce(_ && _)
+
+    prop.run(maxSize, testCases, rng)
+  }
+
+  def forAll[A](gen: SGen[A])(f: A => Boolean): Prop = forAll(gen(_))(f)
 
   /**
     * Generates an infinite stream of `A` values be repeatedly
@@ -178,6 +192,7 @@ object Gen {
 }
 
 case class SGen[+A](forSize: Int => Gen[A]) {
+  def apply(size: Int): Gen[A] = forSize(size)
 
   /**
     * Exercize 8.11
