@@ -87,6 +87,17 @@ object Prop {
 
   def forAll[A](gen: SGen[A])(f: A => Boolean): Prop = forAll(gen(_))(f)
 
+  def run(p: Prop,
+    maxSize: Int = 100,
+    testCases: Int = 100,
+    rng: RNG = RNG.Simple(System.currentTimeMillis)): Unit =
+    p.run(maxSize, testCases, rng) match {
+      case Falsified(msg, n) =>
+        println(s"! Falsified after $n passed tests:\n $msg")
+      case Passed =>
+        println(s"+ OK, passed $testCases tests.")
+    }
+
   /**
     * Generates an infinite stream of `A` values be repeatedly
     * sampling a generator.
@@ -121,6 +132,15 @@ case class Gen[+A](sample: State[RNG, A]) {
   def flatMap[B](f: A => Gen[B]): Gen[B] =
     Gen(sample.flatMap(a => f(a).sample))
 
+  def listOf: SGen[List[A]] =
+    Gen.listOf(this)
+
+  def listOf1: SGen[List[A]] =
+    Gen.listOf1(this)
+
+  def listOfN(size: Int): Gen[List[A]] =
+    Gen.listOfN(size, this)
+
   def listOfN(size: Gen[Int]): Gen[List[A]] =
   //size.flatMap(l => Gen(State.sequence(List.fill(l)(sample))))
     size.flatMap(l => Gen.listOfN(l, this))
@@ -146,12 +166,21 @@ object Gen {
   /**
     * Exercise 8.12
     *
-    * Implement a `listOf` combinator that doesn't acceprt an explicit
+    * Implement a `listOf` combinator that doesn't accept an explicit
     * size. It should return an `SGen` insted of a `Gen`. The
     * implementation should generate lists of the requested size.
     */
   def listOf[A](g: Gen[A]): SGen[List[A]] =
     SGen(n => listOfN(n, g))
+
+  /**
+    * Exercise 8.13
+    *
+    * Define `listOf1` for generating nonempty lists, and then update
+    * your specification of `max` to use this generator.
+    */
+  def listOf1[A](g: Gen[A]): SGen[List[A]] =
+    SGen(n => g.listOfN(n max 1))
 
   /**
     * Exercise 8.4
