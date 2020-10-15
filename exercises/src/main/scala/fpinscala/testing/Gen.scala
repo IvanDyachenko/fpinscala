@@ -237,3 +237,18 @@ case class SGen[+A](forSize: Int => Gen[A]) {
     forSize(size).flatMap(f(_).forSize(size))
   }
 }
+
+object Main extends App {
+  /**
+    * Exercise 8.14
+    *
+    * Write a property to verify the behavior of `List.sorted`.
+    */
+  val listProp = forAll(listOf(Gen.choose(-10, 10))) { ls =>
+    val ms = ls.sorted
+
+    ms.isEmpty || ms.tail.isEmpty || (ms zip ms.tail).forall { case (a, b) => a <= b }
+  }
+
+  run(listProp)
+}
