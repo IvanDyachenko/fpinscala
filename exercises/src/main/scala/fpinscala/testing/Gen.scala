@@ -28,22 +28,22 @@ case class Prop(run: (MaxSize, TestCases, RNG) => Result) {
     */
   def &&(that: Prop): Prop = Prop { (maxSize, testCases, rng) =>
     run(maxSize, testCases, rng) match {
-      case Passed => that.run(maxSize, testCases, rng)
-      case failed => failed
+      case Proved | Passed => that.run(maxSize, testCases, rng)
+      case failed          => failed
     }
   }
 
   def ||(that: Prop): Prop = Prop { (maxSize, testCases, rng) =>
     run(maxSize, testCases, rng) match {
       case Falsified(failure, successes) => that.tag(failure).run(maxSize, testCases, rng)
-      case passed                        => passed
+      case result                        => result
     }
   }
 
   private def tag(msg: String) = Prop { (maxSize, testCases, rng) =>
     run(maxSize, testCases, rng) match {
       case Falsified(failure, successes) => Falsified(s"$msg\n$failure", successes)
-      case passed                        => passed
+      case result                        => result
     }
   }
 }
@@ -56,6 +56,10 @@ object Prop {
 
   sealed trait Result {
     def isFalsified: Boolean
+  }
+
+  case object Proved extends Result {
+    def isFalsified: Boolean = false
   }
 
   case object Passed extends Result {
@@ -92,11 +96,14 @@ object Prop {
     testCases: Int = 100,
     rng: RNG = RNG.Simple(System.currentTimeMillis)): Unit =
     p.run(maxSize, testCases, rng) match {
-      case Falsified(msg, n) =>
-        println(s"! Falsified after $n passed tests:\n $msg")
-      case Passed =>
-        println(s"+ OK, passed $testCases tests.")
+      case Proved            => println(s"+ OK, proved property.")
+      case Passed            => println(s"+ OK, passed $testCases tests.")
+      case Falsified(msg, n) => println(s"! Falsified after $n passed tests:\n $msg")
     }
+
+  def check(p: => Boolean): Prop = Prop { (_, _, _) =>
+    if (p) Proved else Falsified("()", 0)
+  }
 
   /**
     * Generates an infinite stream of `A` values be repeatedly
